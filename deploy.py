@@ -2,7 +2,8 @@
 #pylint:disable=E0237
 from __future__ import absolute_import
 from discord.ext import commands
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup 
+import random
 import discord
 import praw
 import datetime
@@ -74,28 +75,49 @@ async def searchgsi(ctx, *, device):
         embed = discord.Embed(title=f"Search Results for '{device}':", color=0x00ff00)
         for index, result in enumerate(results[:10], start=1):
             embed.add_field(name=f"Result {index}:", value=f"[{result[0]}]({result[1]})", inline=False)
-        await ctx.send(embed=embed)
-        
-            
-                       
-                                             
+        await ctx.send(embed=embed)                                                                                
+
+           
 @bot.command()
 async def search(ctx, *, query):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.97 Safari/537.36'
     }
-    url = f'https://duckduckgo.com/html/?q={query}'
-    response = requests.get(url, headers=headers)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    links = soup.select('.result__url')
-    if not links:
+
+    search_engines = [
+        {'name': 'DuckDuckGo', 'url': 'https://duckduckgo.com/html/?q={}'},
+        {'name': 'Google', 'url': 'https://www.google.com/search?q={}&num=20'},
+        {'name': 'Bing', 'url': 'https://www.bing.com/search?q={}&count=20'},
+        {'name': 'Yahoo', 'url': 'https://search.yahoo.com/search?p={}&n=20'},
+        {'name': 'Ask', 'url': 'https://www.ask.com/web?q={}&qsrc=0&o=0&l=dir&qo=homepageSearchBox'},
+        {'name': 'AOL', 'url': 'https://search.aol.com/aol/search?q={}&count=20'},
+        {'name': 'Dogpile', 'url': 'https://www.dogpile.com/serp?q={}&num=20'},
+        {'name': 'StartPage', 'url': 'https://www.startpage.com/do/dsearch?query={}&cat=web&pl=ext-ff&language=english&lui=english'},
+        {'name': 'Yandex', 'url': 'https://yandex.com/search/?text={}&lr=213'},
+        {'name': 'Wolfram Alpha', 'url': 'https://www.wolframalpha.com/input/?i={}'}
+    ]
+
+    random.shuffle(search_engines)
+
+    results = []
+    for engine in search_engines:
+        url = engine['url'].format(query)
+        response = requests.get(url, headers=headers)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        links = soup.select('.result__url')
+        titles = soup.select('.result__title')
+        for index, link in enumerate(links[:20]):
+            result = {'title': titles[index].text, 'url': link.get('href'), 'engine': engine['name']}
+            results.append(result)
+
+    if not results:
         await ctx.send('No results found.')
     else:
-        x_embed = discord.Embed(title=f"Search Results for '{query}':", color=0x00ff00)
-        for index, link in enumerate(links[0:20], start=1):
-            x_embed.add_field(name=f"Result {index}:", value=link.get('href'), inline=False)
-        await ctx.send(embed=x_embed)            
-
+        random.shuffle(results)
+        embed = discord.Embed(title=f"Search Results for '{query}':", color=0x00ff00)
+        for index, result in enumerate(results[:20], start=1):
+            embed.add_field(name=f"Result {index} ({result['engine']}): {result['title']}", value=result['url'], inline=False)
+        await ctx.send(embed=embed)
 
 
 @bot.command()
